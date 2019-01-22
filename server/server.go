@@ -11,7 +11,7 @@ import (
 )
 
 type Server struct {
-	playerInstance *player.Player
+	playerInstance player.Player
 }
 
 func New() (*Server, error) {
