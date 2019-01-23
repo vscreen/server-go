@@ -2,12 +2,14 @@ package player
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -68,7 +70,8 @@ type mpvCommand struct {
 type MPVPlayer struct {
 	socketPath     string
 	socketConn     net.Conn
-	commandChannel chan mpvCommand
+	commandMutex   *sync.Mutex
+	commandSuccess chan bool
 	eventHandlers  map[Property]EventHandler
 }
 
@@ -101,7 +104,8 @@ func MPVNew() (*MPVPlayer, error) {
 	p := MPVPlayer{
 		socketPath:     socketPath,
 		socketConn:     conn,
-		commandChannel: make(chan mpvCommand),
+		commandMutex:   &sync.Mutex{},
+		commandSuccess: make(chan bool),
 		eventHandlers:  make(map[Property]EventHandler),
 	}
 	return &p, nil
@@ -119,7 +123,6 @@ func tryDial(socketPath string, trials int, d time.Duration) (conn net.Conn, err
 }
 
 func (p *MPVPlayer) Close() {
-	close(p.commandChannel)
 	p.socketConn.Close()
 }
 
@@ -131,19 +134,12 @@ func (p *MPVPlayer) Handle(property Property, handler EventHandler) {
 }
 
 func (p *MPVPlayer) Start() {
-	go func() {
-		for command := range p.commandChannel {
-			fmt.Println("got", command)
-			json.NewEncoder(p.socketConn).Encode(&command)
-		}
-	}()
-
 	// Disable events
-	p.send("disable_event", "all")
+	go p.send("disable_event", "all")
 
 	// Set observers
 	for id := range p.eventHandlers {
-		p.send("observe_property", id, mapPropName(id))
+		go p.send("observe_property", id, mapPropName(id))
 	}
 
 	response := make(map[string]interface{})
@@ -157,6 +153,13 @@ func (p *MPVPlayer) Start() {
 				Name: response["name"].(string),
 				Data: response["data"],
 			})
+		} else if errorReason, ok := response["error"]; ok {
+			// Handle error callback
+			if errorReason == "success" {
+				p.commandSuccess <- true
+			} else {
+				p.commandSuccess <- false
+			}
 		}
 
 		for k := range response {
@@ -165,43 +168,57 @@ func (p *MPVPlayer) Start() {
 	}
 }
 
-func (p *MPVPlayer) send(cmd string, params ...interface{}) {
-	p.commandChannel <- mpvCommand{
+func (p *MPVPlayer) send(cmd string, params ...interface{}) error {
+	p.commandMutex.Lock()
+	defer p.commandMutex.Unlock()
+
+	command := mpvCommand{
 		Command: append([]interface{}{cmd}, params...),
 	}
+	if err := json.NewEncoder(p.socketConn).Encode(&command); err != nil {
+		return err
+	}
+
+	ok := <-p.commandSuccess
+	if !ok {
+		return errors.New("operation failed")
+	}
+	return nil
 }
 
+// Play plays the current video. If there's no video,
+// nothing will happen
 func (p *MPVPlayer) Play() error {
-	p.send("set_property", "pause", false)
-	return nil
+	return p.send("set_property", "pause", false)
 }
 
+// Pause pauses the current video. If there's no video,
+// nothing will happen
 func (p *MPVPlayer) Pause() error {
-	p.send("set_property", "pause", true)
-	return nil
+	return p.send("set_property", "pause", true)
 }
 
+// Stop stops the player and clear up the playlist
 func (p *MPVPlayer) Stop() error {
-	p.send("stop")
-	return nil
+	return p.send("stop")
 }
 
+// Next sets the player to the next video in the playlist
 func (p *MPVPlayer) Next() error {
-	p.send("playlist-next", "force")
-	return nil
+	return p.send("playlist-next", "force")
 }
 
+// Add adds the url to the playlist
 func (p *MPVPlayer) Add(url string) error {
-	p.send("loadfile", url, "append-play")
-	return nil
+	return p.send("loadfile", url, "append-play")
 }
 
+// Seek sets the current video to position (from 0 - 1.0)
 func (p *MPVPlayer) Seek(position float64) error {
-	fmt.Println("SEEEK", position*100, position)
-	p.send("set_property", "percent-pos", position*100)
-	return nil
+	return p.send("set_property", "percent-pos", position*100)
 }
 
+// InfoListener returns a channel to get the most up to date info
 func (p *MPVPlayer) InfoListener() <-chan Info {
 	// TODO!
 	return nil
