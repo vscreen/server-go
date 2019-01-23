@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/vscreen/server-go/player"
 )
 
 type mpvCommand struct {
@@ -34,7 +36,6 @@ func New() (*MPVPlayer, error) {
 		"--fullscreen",
 		fmt.Sprintf("--input-ipc-server=%s", socketPath),
 		"--ytdl-format=best",
-		"--hwdec=rpi",
 	)
 
 	cmd.Stdout = os.Stdout
@@ -134,6 +135,7 @@ func (p *MPVPlayer) Pause() error {
 
 func (p *MPVPlayer) Stop() error {
 	// TODO!
+	p.send("stop")
 	return nil
 }
 
@@ -148,6 +150,11 @@ func (p *MPVPlayer) Add(url string) error {
 }
 
 func (p *MPVPlayer) Seek(position float64) error {
+	// TODO!
+	return nil
+}
+
+func (p *MPVPlayer) InfoListener() <-chan player.Info {
 	// TODO!
 	return nil
 }

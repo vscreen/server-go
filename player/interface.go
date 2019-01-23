@@ -1,5 +1,14 @@
 package player
 
+// Info represents the current state of the video player
+type Info interface {
+	Title() string
+	Thumbnail() string
+	Volume() float64
+	Position() float64
+	State() string
+}
+
 // Player is an abstraction of a video player. It contains
 // some basic operations that should be available in most
 // video player applications out there.
@@ -15,4 +24,5 @@ type Player interface {
 	// done here. This should be the main loop for the video. Meaning,
 	// Start blocks the main program flow.
 	Start()
+	InfoListener() <-chan Info
 }
