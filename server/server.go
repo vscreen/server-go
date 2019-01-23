@@ -63,11 +63,19 @@ func (s *Server) Pause(ctx context.Context, _ *Empty) (*Status, error) {
 }
 
 func (s *Server) Stop(ctx context.Context, _ *Empty) (*Status, error) {
-	return nil, nil
+	s.playerInstance.Stop()
+
+	return &Status{
+		Code: StatusCode_OK,
+	}, nil
 }
 
 func (s *Server) Next(ctx context.Context, _ *Empty) (*Status, error) {
-	return nil, nil
+	s.playerInstance.Next()
+
+	return &Status{
+		Code: StatusCode_OK,
+	}, nil
 }
 
 func (s *Server) Add(ctx context.Context, src *Source) (*Status, error) {
@@ -79,7 +87,11 @@ func (s *Server) Add(ctx context.Context, src *Source) (*Status, error) {
 }
 
 func (s *Server) Seek(ctx context.Context, pos *Position) (*Status, error) {
-	return nil, nil
+	s.playerInstance.Seek(pos.GetValue())
+
+	return &Status{
+		Code: StatusCode_OK,
+	}, nil
 }
 
 func (s *Server) Subscribe(user *User, stream VScreen_SubscribeServer) error {
