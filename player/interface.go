@@ -1,12 +1,12 @@
 package player
 
 // Info represents the current state of the video player
-type Info interface {
-	Title() string
-	Thumbnail() string
-	Volume() float64
-	Position() float64
-	State() string
+type Info struct {
+	Title     string
+	Thumbnail string
+	Volume    float64
+	Position  float64
+	State     string
 }
 
 // Player is an abstraction of a video player. It contains
@@ -25,4 +25,5 @@ type Player interface {
 	// Start blocks the main program flow.
 	Start()
 	InfoListener() <-chan Info
+	Close()
 }

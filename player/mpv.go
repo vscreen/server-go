@@ -17,33 +17,15 @@ const (
 	socketName = "vscreen.sock"
 )
 
-type mpvInfo struct{}
-
-func (i *mpvInfo) Title() string {
-	return ""
-}
-
-func (i *mpvInfo) Thumbnail() string {
-	return ""
-}
-
-func (i *mpvInfo) Volume() float64 {
-	return 0.0
-}
-
-func (i *mpvInfo) Position() float64 {
-	return 0.0
-}
-
-func (i *mpvInfo) State() string {
-	return ""
-}
-
+// Property is an id type to map mpv's properties
 type Property uint8
 
 const (
 	_ Property = iota
+	// PropPause is mpv's property
 	PropPause
+	// PropTitle is mpv's property
+	PropTitle
 )
 
 func mapPropName(property Property) string {
@@ -51,30 +33,37 @@ func mapPropName(property Property) string {
 	switch property {
 	case PropPause:
 		name = "pause"
+	case PropTitle:
+		name = "media-title"
 	}
 
 	return name
 }
 
+// Event is a data structure to hold responses from mpv when state changes
 type Event struct {
 	Name string
 	Data interface{}
 }
 
+// EventHandler is a signature to handle Event
 type EventHandler func(Event)
 
 type mpvCommand struct {
 	Command []interface{} `json:"command"`
 }
 
+// MPVPlayer is an abstraction on top of mpv
 type MPVPlayer struct {
 	socketPath     string
 	socketConn     net.Conn
 	commandMutex   *sync.Mutex
 	commandSuccess chan bool
 	eventHandlers  map[Property]EventHandler
+	infoChannel    chan Info
 }
 
+// MPVNew creates MPVPlayer instance
 func MPVNew() (*MPVPlayer, error) {
 	tmpDir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -107,7 +96,9 @@ func MPVNew() (*MPVPlayer, error) {
 		commandMutex:   &sync.Mutex{},
 		commandSuccess: make(chan bool),
 		eventHandlers:  make(map[Property]EventHandler),
+		infoChannel:    make(chan Info),
 	}
+
 	return &p, nil
 }
 
@@ -122,6 +113,7 @@ func tryDial(socketPath string, trials int, d time.Duration) (conn net.Conn, err
 	return nil, err
 }
 
+// Close cleans up MPVPlayer's resources
 func (p *MPVPlayer) Close() {
 	p.socketConn.Close()
 }
@@ -129,11 +121,28 @@ func (p *MPVPlayer) Close() {
 // Handle sets handler to be a callback function when property changes
 // Full list of valid properties:
 // https://github.com/mpv-player/mpv/blob/master/DOCS/man/input.rst#property-list
-func (p *MPVPlayer) Handle(property Property, handler EventHandler) {
+func (p *MPVPlayer) handle(property Property, handler EventHandler) {
 	p.eventHandlers[property] = handler
 }
 
+func (p *MPVPlayer) onPauseEvent(e Event) {
+	// TODO!
+}
+
+func (p *MPVPlayer) onTitleEvent(e Event) {
+	// TODO!
+}
+
+func (p *MPVPlayer) onTumbnailEvent(e Event) {
+	// TODO!
+}
+
+// Start initializes player and block until done
 func (p *MPVPlayer) Start() {
+	// Set up property handlers for state management
+	p.handle(PropPause, p.onPauseEvent)
+	p.handle(PropTitle, p.onTitleEvent)
+
 	// Disable events
 	go p.send("disable_event", "all")
 
