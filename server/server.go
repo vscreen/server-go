@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net"
+	"sync"
 
 	"google.golang.org/grpc/reflection"
 
@@ -12,6 +13,8 @@ import (
 
 type Server struct {
 	playerInstance player.Player
+	subscribers    *sync.Map
+	curInfo        *Info
 }
 
 func New() (*Server, error) {
@@ -22,6 +25,8 @@ func New() (*Server, error) {
 
 	return &Server{
 		playerInstance: p,
+		subscribers:    &sync.Map{},
+		curInfo:        nil,
 	}, nil
 }
 
@@ -95,11 +100,50 @@ func (s *Server) Seek(ctx context.Context, pos *Position) (*Status, error) {
 }
 
 func (s *Server) Subscribe(user *User, stream VScreen_SubscribeServer) error {
+	s.subscribers.Store(user.GetId(), stream)
+	infoChannel := s.playerInstance.InfoListener()
+
+	if s.curInfo != nil {
+		stream.Send(s.curInfo)
+	}
+
+	for info := range infoChannel {
+		state := Info_STOPPED
+		switch info.State {
+		case "playing":
+			state = Info_PLAYING
+		case "paused":
+			state = Info_PAUSED
+		}
+
+		infoGrpc := &Info{
+			Title:        info.Title,
+			ThumbnailURL: info.Thumbnail,
+			Volume:       info.Volume,
+			Position:     info.Position,
+			State:        state,
+		}
+
+		s.subscribers.Range(func(key, value interface{}) bool {
+			subscriber := value.(VScreen_SubscribeServer)
+			subscriber.Send(infoGrpc)
+			return true
+		})
+		s.curInfo = infoGrpc
+
+		if _, ok := s.subscribers.Load(user.GetId()); !ok {
+			break
+		}
+	}
+
 	return nil
 }
 
 func (s *Server) Unsubscribe(ctx context.Context, user *User) (*Status, error) {
-	return nil, nil
+	s.subscribers.Delete(user.GetId())
+	return &Status{
+		Code: StatusCode_OK,
+	}, nil
 }
 
 var _ VScreenServer = &Server{}

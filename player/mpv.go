@@ -60,6 +60,8 @@ type MPVPlayer struct {
 	commandMutex   *sync.Mutex
 	commandSuccess chan bool
 	eventHandlers  map[Property]EventHandler
+	playlist       []*VideoInfo
+	infoCur        Info
 	infoChannel    chan Info
 }
 
@@ -96,7 +98,15 @@ func MPVNew() (*MPVPlayer, error) {
 		commandMutex:   &sync.Mutex{},
 		commandSuccess: make(chan bool),
 		eventHandlers:  make(map[Property]EventHandler),
-		infoChannel:    make(chan Info),
+		playlist:       make([]*VideoInfo, 0),
+		infoCur: Info{
+			Title:     "",
+			Thumbnail: "",
+			Volume:    0.0,
+			Position:  0.0,
+			State:     "stopped",
+		},
+		infoChannel: make(chan Info),
 	}
 
 	return &p, nil
@@ -116,6 +126,7 @@ func tryDial(socketPath string, trials int, d time.Duration) (conn net.Conn, err
 // Close cleans up MPVPlayer's resources
 func (p *MPVPlayer) Close() {
 	p.socketConn.Close()
+	close(p.infoChannel)
 }
 
 // Handle sets handler to be a callback function when property changes
@@ -126,15 +137,40 @@ func (p *MPVPlayer) handle(property Property, handler EventHandler) {
 }
 
 func (p *MPVPlayer) onPauseEvent(e Event) {
-	// TODO!
+	if e.Data.(bool) {
+		p.infoCur.State = "paused"
+	} else {
+		p.infoCur.State = "playing"
+	}
+
+	p.updateInfo()
 }
 
 func (p *MPVPlayer) onTitleEvent(e Event) {
-	// TODO!
+	if e.Data == nil {
+		return
+	}
+
+	curVideo := p.playlist[0]
+	p.playlist = p.playlist[1:]
+
+	p.infoCur.Position = 0.0
+	p.infoCur.Thumbnail = curVideo.Thumbnail
+	p.infoCur.Title = curVideo.Title
+	p.updateInfo()
 }
 
-func (p *MPVPlayer) onTumbnailEvent(e Event) {
-	// TODO!
+func (p *MPVPlayer) updateInfo() {
+loop:
+	for {
+		select {
+		case p.infoChannel <- p.infoCur:
+			break loop
+		case <-time.After(time.Second):
+			// Throw away old info
+			<-p.infoChannel
+		}
+	}
 }
 
 // Start initializes player and block until done
@@ -209,7 +245,18 @@ func (p *MPVPlayer) Pause() error {
 
 // Stop stops the player and clear up the playlist
 func (p *MPVPlayer) Stop() error {
-	return p.send("stop")
+	if err := p.send("stop"); err != nil {
+		return err
+	}
+
+	p.playlist = p.playlist[:0]
+	p.infoCur.Position = 0.0
+	p.infoCur.State = "stopped"
+	p.infoCur.Title = ""
+	p.infoCur.Thumbnail = ""
+	p.updateInfo()
+
+	return nil
 }
 
 // Next sets the player to the next video in the playlist
@@ -219,16 +266,27 @@ func (p *MPVPlayer) Next() error {
 
 // Add adds the url to the playlist
 func (p *MPVPlayer) Add(url string) error {
-	return p.send("loadfile", url, "append-play")
+	info, err := extract(url)
+	if err != nil {
+		return err
+	}
+
+	p.playlist = append(p.playlist, info)
+	return p.send("loadfile", info.URL, "append-play")
 }
 
 // Seek sets the current video to position (from 0 - 1.0)
 func (p *MPVPlayer) Seek(position float64) error {
-	return p.send("set_property", "percent-pos", position*100)
+	if err := p.send("set_property", "percent-pos", position*100); err != nil {
+		return err
+	}
+
+	p.infoCur.Position = position
+	p.updateInfo()
+	return nil
 }
 
 // InfoListener returns a channel to get the most up to date info
 func (p *MPVPlayer) InfoListener() <-chan Info {
-	// TODO!
-	return nil
+	return p.infoChannel
 }
