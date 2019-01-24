@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"google.golang.org/grpc/reflection"
 
@@ -14,23 +15,67 @@ import (
 type Server struct {
 	playerInstance player.Player
 	subscribers    *sync.Map
-	curInfo        *Info
+	curInfo        *atomic.Value
+	publishMutex   *sync.Mutex
 }
 
 func New() (*Server, error) {
-	p, err := player.New()
-	if err != nil {
-		return nil, err
-	}
+	curInfo := atomic.Value{}
 
 	return &Server{
-		playerInstance: p,
+		playerInstance: nil,
 		subscribers:    &sync.Map{},
-		curInfo:        nil,
+		curInfo:        &curInfo,
 	}, nil
 }
 
+func (s *Server) startNotifierService() {
+	infoChannel := s.playerInstance.InfoListener()
+
+	for info := range infoChannel {
+		state := Info_STOPPED
+		switch info.State {
+		case "playing":
+			state = Info_PLAYING
+		case "paused":
+			state = Info_PAUSED
+		}
+
+		infoGrpc := &Info{
+			Title:        info.Title,
+			ThumbnailURL: info.Thumbnail,
+			Volume:       info.Volume,
+			Position:     info.Position,
+			State:        state,
+		}
+
+		s.subscribers.Range(func(key, value interface{}) bool {
+			subscriber := value.(chan *Info)
+			subscriber <- infoGrpc
+			return true
+		})
+		s.curInfo.Store(infoGrpc)
+	}
+
+	// close all subscriber channels
+	s.subscribers.Range(func(key, value interface{}) bool {
+		subscriber := value.(chan<- *Info)
+		close(subscriber)
+		return true
+	})
+}
+
 func (s *Server) ListenAndServe(addr string) error {
+	// setup player first
+	p, err := player.New()
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	s.playerInstance = p
+	go s.playerInstance.Start()
+
+	// setup networking
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -41,7 +86,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	RegisterVScreenServer(grpcServer, s)
 	reflection.Register(grpcServer)
 
-	go s.playerInstance.Start()
+	go s.startNotifierService()
 	return grpcServer.Serve(lis)
 }
 
@@ -100,45 +145,22 @@ func (s *Server) Seek(ctx context.Context, pos *Position) (*Status, error) {
 }
 
 func (s *Server) Subscribe(user *User, stream VScreen_SubscribeServer) error {
-	s.subscribers.Store(user.GetId(), stream)
-	infoChannel := s.playerInstance.InfoListener()
+	var err error
 
-	if s.curInfo != nil {
-		stream.Send(s.curInfo)
+	subscriberChan := make(chan *Info)
+	s.subscribers.Store(user.GetId(), subscriberChan)
+	if s.curInfo.Load() != nil {
+		stream.Send(s.curInfo.Load().(*Info))
 	}
 
-	for info := range infoChannel {
-		state := Info_STOPPED
-		switch info.State {
-		case "playing":
-			state = Info_PLAYING
-		case "paused":
-			state = Info_PAUSED
-		}
-
-		infoGrpc := &Info{
-			Title:        info.Title,
-			ThumbnailURL: info.Thumbnail,
-			Volume:       info.Volume,
-			Position:     info.Position,
-			State:        state,
-		}
-
-		s.subscribers.Range(func(key, value interface{}) bool {
-			subscriber := value.(VScreen_SubscribeServer)
-			if err := subscriber.Send(infoGrpc); err != nil {
-				s.subscribers.Delete(key)
-			}
-			return true
-		})
-		s.curInfo = infoGrpc
-
-		if _, ok := s.subscribers.Load(user.GetId()); !ok {
+	for info := range subscriberChan {
+		if err = stream.Send(info); err != nil {
 			break
 		}
 	}
 
-	return nil
+	s.subscribers.Delete(user.GetId())
+	return err
 }
 
 func (s *Server) Unsubscribe(ctx context.Context, user *User) (*Status, error) {
