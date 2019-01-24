@@ -62,6 +62,7 @@ type MPVPlayer struct {
 	eventHandlers  map[Property]EventHandler
 	playlist       []*VideoInfo
 	infoCur        Info
+	infoMutex      *sync.Mutex
 	infoChannel    chan Info
 }
 
@@ -99,14 +100,9 @@ func MPVNew() (*MPVPlayer, error) {
 		commandSuccess: make(chan bool),
 		eventHandlers:  make(map[Property]EventHandler),
 		playlist:       make([]*VideoInfo, 0),
-		infoCur: Info{
-			Title:     "",
-			Thumbnail: "",
-			Volume:    0.0,
-			Position:  0.0,
-			State:     "stopped",
-		},
-		infoChannel: make(chan Info),
+		infoCur:        Info{State: "stopped"},
+		infoMutex:      &sync.Mutex{},
+		infoChannel:    make(chan Info),
 	}
 
 	return &p, nil
@@ -137,14 +133,14 @@ func (p *MPVPlayer) handle(property Property, handler EventHandler) {
 }
 
 func (p *MPVPlayer) onPauseEvent(e Event) {
-	info := p.infoCur
-	if e.Data.(bool) {
-		info.State = "paused"
-	} else {
-		info.State = "playing"
-	}
-
-	p.updateInfo(info)
+	p.updateInfo(func(info Info) Info {
+		if e.Data.(bool) {
+			info.State = "paused"
+		} else {
+			info.State = "playing"
+		}
+		return info
+	})
 }
 
 func (p *MPVPlayer) onTitleEvent(e Event) {
@@ -155,14 +151,19 @@ func (p *MPVPlayer) onTitleEvent(e Event) {
 	curVideo := p.playlist[0]
 	p.playlist = p.playlist[1:]
 
-	info := p.infoCur
-	info.Position = 0.0
-	info.Thumbnail = curVideo.Thumbnail
-	info.Title = curVideo.Title
-	p.updateInfo(info)
+	p.updateInfo(func(info Info) Info {
+		info.Position = 0.0
+		info.Thumbnail = curVideo.Thumbnail
+		info.Title = curVideo.Title
+		return info
+	})
 }
 
-func (p *MPVPlayer) updateInfo(newInfo Info) {
+func (p *MPVPlayer) updateInfo(updater func(oldInfo Info) Info) {
+	p.infoMutex.Lock()
+	defer p.infoMutex.Unlock()
+
+	newInfo := updater(p.infoCur)
 loop:
 	for {
 		select {
@@ -190,28 +191,43 @@ func (p *MPVPlayer) Start() {
 		go p.send("observe_property", id, mapPropName(id))
 	}
 
-	response := make(map[string]interface{})
-	for {
-		json.NewDecoder(p.socketConn).Decode(&response)
+	errorChan := make(chan string)
+	eventChan := make(chan map[string]interface{})
 
-		fmt.Println("response", response)
-		if event, ok := response["event"]; ok && event == "property-change" {
-			handler := p.eventHandlers[Property(response["id"].(float64))]
-			go handler(Event{
-				Name: response["name"].(string),
-				Data: response["data"],
-			})
-		} else if errorReason, ok := response["error"]; ok {
-			// Handle error callback
-			if errorReason == "success" {
+	defer close(errorChan)
+	defer close(eventChan)
+
+	// Error handler
+	go func() {
+		// Handle error callback
+		for reason := range errorChan {
+			if reason == "success" {
 				p.commandSuccess <- true
 			} else {
 				p.commandSuccess <- false
 			}
 		}
+	}()
 
-		for k := range response {
-			delete(response, k)
+	// Event handler
+	go func() {
+		for response := range eventChan {
+			handler := p.eventHandlers[Property(response["id"].(float64))]
+			go handler(Event{
+				Name: response["name"].(string),
+				Data: response["data"],
+			})
+		}
+	}()
+
+	for {
+		response := make(map[string]interface{})
+		json.NewDecoder(p.socketConn).Decode(&response)
+
+		if event, ok := response["event"]; ok && event == "property-change" {
+			eventChan <- response
+		} else if reason, ok := response["error"]; ok {
+			errorChan <- reason.(string)
 		}
 	}
 }
@@ -253,13 +269,13 @@ func (p *MPVPlayer) Stop() error {
 	}
 
 	p.playlist = p.playlist[:0]
-	info := p.infoCur
-	info.Position = 0.0
-	info.State = "stopped"
-	info.Title = ""
-	info.Thumbnail = ""
-	p.updateInfo(info)
-
+	p.updateInfo(func(info Info) Info {
+		info.Position = 0.0
+		info.State = "stopped"
+		info.Title = ""
+		info.Thumbnail = ""
+		return info
+	})
 	return nil
 }
 
@@ -285,9 +301,10 @@ func (p *MPVPlayer) Seek(position float64) error {
 		return err
 	}
 
-	info := p.infoCur
-	info.Position = position
-	p.updateInfo(info)
+	p.updateInfo(func(info Info) Info {
+		info.Position = position
+		return info
+	})
 	return nil
 }
 
