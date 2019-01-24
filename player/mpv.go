@@ -137,13 +137,14 @@ func (p *MPVPlayer) handle(property Property, handler EventHandler) {
 }
 
 func (p *MPVPlayer) onPauseEvent(e Event) {
+	info := p.infoCur
 	if e.Data.(bool) {
-		p.infoCur.State = "paused"
+		info.State = "paused"
 	} else {
-		p.infoCur.State = "playing"
+		info.State = "playing"
 	}
 
-	p.updateInfo()
+	p.updateInfo(info)
 }
 
 func (p *MPVPlayer) onTitleEvent(e Event) {
@@ -154,23 +155,25 @@ func (p *MPVPlayer) onTitleEvent(e Event) {
 	curVideo := p.playlist[0]
 	p.playlist = p.playlist[1:]
 
-	p.infoCur.Position = 0.0
-	p.infoCur.Thumbnail = curVideo.Thumbnail
-	p.infoCur.Title = curVideo.Title
-	p.updateInfo()
+	info := p.infoCur
+	info.Position = 0.0
+	info.Thumbnail = curVideo.Thumbnail
+	info.Title = curVideo.Title
+	p.updateInfo(info)
 }
 
-func (p *MPVPlayer) updateInfo() {
+func (p *MPVPlayer) updateInfo(newInfo Info) {
 loop:
 	for {
 		select {
-		case p.infoChannel <- p.infoCur:
+		case p.infoChannel <- newInfo:
 			break loop
 		case <-time.After(time.Second):
 			// Throw away old info
 			<-p.infoChannel
 		}
 	}
+	p.infoCur = newInfo
 }
 
 // Start initializes player and block until done
@@ -194,7 +197,7 @@ func (p *MPVPlayer) Start() {
 		fmt.Println("response", response)
 		if event, ok := response["event"]; ok && event == "property-change" {
 			handler := p.eventHandlers[Property(response["id"].(float64))]
-			handler(Event{
+			go handler(Event{
 				Name: response["name"].(string),
 				Data: response["data"],
 			})
@@ -250,11 +253,12 @@ func (p *MPVPlayer) Stop() error {
 	}
 
 	p.playlist = p.playlist[:0]
-	p.infoCur.Position = 0.0
-	p.infoCur.State = "stopped"
-	p.infoCur.Title = ""
-	p.infoCur.Thumbnail = ""
-	p.updateInfo()
+	info := p.infoCur
+	info.Position = 0.0
+	info.State = "stopped"
+	info.Title = ""
+	info.Thumbnail = ""
+	p.updateInfo(info)
 
 	return nil
 }
@@ -281,8 +285,9 @@ func (p *MPVPlayer) Seek(position float64) error {
 		return err
 	}
 
-	p.infoCur.Position = position
-	p.updateInfo()
+	info := p.infoCur
+	info.Position = position
+	p.updateInfo(info)
 	return nil
 }
 

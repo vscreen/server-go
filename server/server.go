@@ -126,7 +126,9 @@ func (s *Server) Subscribe(user *User, stream VScreen_SubscribeServer) error {
 
 		s.subscribers.Range(func(key, value interface{}) bool {
 			subscriber := value.(VScreen_SubscribeServer)
-			subscriber.Send(infoGrpc)
+			if err := subscriber.Send(infoGrpc); err != nil {
+				s.subscribers.Delete(key)
+			}
 			return true
 		})
 		s.curInfo = infoGrpc
