@@ -3,13 +3,14 @@ package player
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -41,7 +42,9 @@ func extract(url string) (*VideoInfo, error) {
 }
 
 func init() {
-	fmt.Println("[extractor] updating youtube-dl")
+	log.Info("[extractor] cheking for a new update for youtube-dl")
+	var updated bool
+
 	curDir, err := os.Getwd()
 	if err != nil {
 		log.Fatal("[extractor]", curDir)
@@ -50,22 +53,35 @@ func init() {
 	ytdlPath = filepath.Join(curDir, "youtube-dl")
 
 	// check youtube-dl
-	resp, err := http.Get("https://yt-dl.org/downloads/latest/youtube-dl")
-	if err != nil {
-		log.Fatal("[extractor] failed to update youtube-dl")
-	}
-	defer resp.Body.Close()
-
-	f, err := os.Create(ytdlPath)
-	if err != nil {
-		log.Fatal("[extractor]", err)
-	}
-	defer f.Close()
-
-	_, err = io.CopyBuffer(f, resp.Body, nil)
-	if err != nil {
-		log.Fatal(err)
+	if info, err := os.Stat(ytdlPath); err == nil {
+		modY, modM, modD := info.ModTime().Date()
+		todY, todM, todD := time.Now().Date()
+		if modY == todY || modM == todM || modD == todD {
+			updated = true
+		}
 	}
 
-	fmt.Println("[extractor] updated youtube-dl")
+	if !updated {
+		resp, err := http.Get("https://yt-dl.org/downloads/latest/youtube-dl")
+		if err != nil {
+			log.Fatal("[extractor] failed to update youtube-dl")
+		}
+		defer resp.Body.Close()
+
+		f, err := os.Create(ytdlPath)
+		if err != nil {
+			log.Fatal("[extractor]", err)
+		}
+		defer f.Close()
+
+		_, err = io.CopyBuffer(f, resp.Body, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Info("[extractor] updated youtube-dl")
+	} else {
+		log.Info("[extractor] youtube-dl is up to date already")
+	}
+
 }
