@@ -6,6 +6,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/vscreen/server-go/player"
@@ -31,6 +32,7 @@ func New() (*Server, error) {
 
 func (s *Server) startNotifierService() {
 	infoChannel := s.playerInstance.InfoListener()
+	log.Info("[server] created notifier service")
 
 	for info := range infoChannel {
 		infoGrpc := &Info{
@@ -41,7 +43,15 @@ func (s *Server) startNotifierService() {
 			Playing:   info.Playing,
 		}
 
-		s.subscribers.Range(func(key, value interface{}) bool {
+		log.WithFields(log.Fields{
+			"title":     info.Title,
+			"thumbnail": info.Thumbnail,
+			"volume":    info.Volume,
+			"position":  info.Position,
+			"playing":   info.Playing,
+		}).Debug("[server] publishing current info to subscribers")
+
+		s.subscribers.Range(func(subscriberID, value interface{}) bool {
 			subscriber := value.(chan *Info)
 			subscriber <- infoGrpc
 			return true
@@ -55,6 +65,7 @@ func (s *Server) startNotifierService() {
 		close(subscriber)
 		return true
 	})
+	log.Info("[server] closed notifier service")
 }
 
 func (s *Server) ListenAndServe(addr string) error {
@@ -79,6 +90,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	reflection.Register(grpcServer)
 
 	go s.startNotifierService()
+	log.Info("[server] started accepting clients")
 	return grpcServer.Serve(lis)
 }
 
@@ -89,7 +101,7 @@ func (s *Server) Auth(ctx context.Context, c *Credential) (*Status, error) {
 }
 
 func (s *Server) Play(ctx context.Context, _ *Empty) (*Status, error) {
-
+	log.Info("[server] received play request")
 	s.playerInstance.Play()
 
 	return &Status{
@@ -98,6 +110,7 @@ func (s *Server) Play(ctx context.Context, _ *Empty) (*Status, error) {
 }
 
 func (s *Server) Pause(ctx context.Context, _ *Empty) (*Status, error) {
+	log.Info("[server] received pause request")
 	s.playerInstance.Pause()
 
 	return &Status{
@@ -106,6 +119,7 @@ func (s *Server) Pause(ctx context.Context, _ *Empty) (*Status, error) {
 }
 
 func (s *Server) Stop(ctx context.Context, _ *Empty) (*Status, error) {
+	log.Info("[server] received stop request")
 	s.playerInstance.Stop()
 
 	return &Status{
@@ -114,6 +128,7 @@ func (s *Server) Stop(ctx context.Context, _ *Empty) (*Status, error) {
 }
 
 func (s *Server) Next(ctx context.Context, _ *Empty) (*Status, error) {
+	log.Info("[server] received next request")
 	s.playerInstance.Next()
 
 	return &Status{
@@ -122,6 +137,7 @@ func (s *Server) Next(ctx context.Context, _ *Empty) (*Status, error) {
 }
 
 func (s *Server) Add(ctx context.Context, src *Source) (*Status, error) {
+	log.Info("[server] received add request")
 	s.playerInstance.Add(src.Url)
 
 	return &Status{
@@ -130,6 +146,7 @@ func (s *Server) Add(ctx context.Context, src *Source) (*Status, error) {
 }
 
 func (s *Server) Seek(ctx context.Context, pos *Position) (*Status, error) {
+	log.Info("[server] received seek request")
 	s.playerInstance.Seek(pos.GetValue())
 
 	return &Status{
@@ -139,25 +156,33 @@ func (s *Server) Seek(ctx context.Context, pos *Position) (*Status, error) {
 
 func (s *Server) Subscribe(user *User, stream VScreen_SubscribeServer) error {
 	var err error
+	id := user.GetId()
+
+	log.WithField("id", id).Info("[server] got a new subscriber")
 
 	subscriberChan := make(chan *Info)
-	s.subscribers.Store(user.GetId(), subscriberChan)
+	s.subscribers.Store(id, subscriberChan)
 	if s.curInfo.Load() != nil {
 		stream.Send(s.curInfo.Load().(*Info))
 	}
 
 	for info := range subscriberChan {
+		log.WithField("id", id).Info("[server] sending current info to subscriber")
 		if err = stream.Send(info); err != nil {
 			break
 		}
 	}
 
 	s.subscribers.Delete(user.GetId())
+	log.WithField("id", id).Info("[server] unsubscribed")
 	return err
 }
 
 func (s *Server) Unsubscribe(ctx context.Context, user *User) (*Status, error) {
-	s.subscribers.Delete(user.GetId())
+	id := user.GetId()
+
+	s.subscribers.Delete(id)
+	log.WithField("id", id).Info("[server] unsubscribed")
 	return &Status{
 		Code: StatusCode_OK,
 	}, nil
