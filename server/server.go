@@ -89,6 +89,7 @@ func (s *Server) Auth(ctx context.Context, c *Credential) (*Status, error) {
 }
 
 func (s *Server) Play(ctx context.Context, _ *Empty) (*Status, error) {
+
 	s.playerInstance.Play()
 
 	return &Status{
