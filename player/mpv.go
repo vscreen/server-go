@@ -160,16 +160,7 @@ func (p *MPVPlayer) updateInfo(updater func(oldInfo Info) Info) {
 	defer p.infoMutex.Unlock()
 
 	newInfo := updater(p.infoCur)
-loop:
-	for {
-		select {
-		case p.infoChannel <- newInfo:
-			break loop
-		case <-time.After(time.Second):
-			// Throw away old info
-			<-p.infoChannel
-		}
-	}
+	p.infoChannel <- newInfo
 	p.infoCur = newInfo
 }
 
