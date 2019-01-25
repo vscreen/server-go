@@ -75,13 +75,13 @@ func MPVNew() (*MPVPlayer, error) {
 
 	socketPath := filepath.Join(tmpDir, socketName)
 	cmd := exec.Command("mpv",
+		"--msg-level=all=error",
 		"--idle=yes",
 		"--fullscreen",
 		fmt.Sprintf("--input-ipc-server=%s", socketPath),
 		"--ytdl-format=best",
 	)
 
-	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
