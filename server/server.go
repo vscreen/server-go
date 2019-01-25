@@ -33,20 +33,12 @@ func (s *Server) startNotifierService() {
 	infoChannel := s.playerInstance.InfoListener()
 
 	for info := range infoChannel {
-		state := Info_STOPPED
-		switch info.State {
-		case "playing":
-			state = Info_PLAYING
-		case "paused":
-			state = Info_PAUSED
-		}
-
 		infoGrpc := &Info{
-			Title:        info.Title,
-			ThumbnailURL: info.Thumbnail,
-			Volume:       info.Volume,
-			Position:     info.Position,
-			State:        state,
+			Title:     info.Title,
+			Thumbnail: info.Thumbnail,
+			Volume:    info.Volume,
+			Position:  info.Position,
+			Playing:   info.Playing,
 		}
 
 		s.subscribers.Range(func(key, value interface{}) bool {

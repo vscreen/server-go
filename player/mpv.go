@@ -100,7 +100,7 @@ func MPVNew() (*MPVPlayer, error) {
 		commandSuccess: make(chan bool),
 		eventHandlers:  make(map[Property]EventHandler),
 		playlist:       make([]*VideoInfo, 0),
-		infoCur:        Info{State: "stopped"},
+		infoCur:        Info{},
 		infoMutex:      &sync.Mutex{},
 		infoChannel:    make(chan Info),
 	}
@@ -134,11 +134,7 @@ func (p *MPVPlayer) handle(property Property, handler EventHandler) {
 
 func (p *MPVPlayer) onPauseEvent(e Event) {
 	p.updateInfo(func(info Info) Info {
-		if e.Data.(bool) {
-			info.State = "paused"
-		} else {
-			info.State = "playing"
-		}
+		info.Playing = !e.Data.(bool)
 		return info
 	})
 }
@@ -271,7 +267,7 @@ func (p *MPVPlayer) Stop() error {
 	p.playlist = p.playlist[:0]
 	p.updateInfo(func(info Info) Info {
 		info.Position = 0.0
-		info.State = "stopped"
+		info.Playing = false
 		info.Title = ""
 		info.Thumbnail = ""
 		return info

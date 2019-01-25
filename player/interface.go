@@ -6,7 +6,7 @@ type Info struct {
 	Thumbnail string
 	Volume    float64
 	Position  float64
-	State     string
+	Playing   bool
 }
 
 // Player is an abstraction of a video player. It contains
