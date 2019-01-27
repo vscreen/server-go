@@ -152,19 +152,34 @@ func (p *Player) Next() error {
 		return nil
 	}
 
-	info := p.playlist[0]
-	p.playlist = p.playlist[1:]
+	if len(p.playlist) == 0 {
+		if err := p.b.seek(1.0); err != nil {
+			return err
+		}
 
-	if err := p.b.add(info.URL); err != nil {
-		return err
+		p.videoTimer.stop()
+		p.videoTimer = nil
+
+		p.infoCur.Position = 0.0
+		p.infoCur.Playing = false
+		p.infoCur.Title = ""
+		p.infoCur.Thumbnail = ""
+	} else {
+		info := p.playlist[0]
+		p.playlist = p.playlist[1:]
+
+		if err := p.b.add(info.URL); err != nil {
+			return err
+		}
+		p.videoTimer.stop()
+		p.videoTimer = newTimer(info.Duration, p.onFinish)
+
+		p.infoCur.Title = info.Title
+		p.infoCur.Thumbnail = info.Thumbnail
+		p.infoCur.Position = 0.0
+		p.infoCur.Playing = true
 	}
-	p.videoTimer.stop()
-	p.videoTimer = newTimer(info.Duration, p.onFinish)
 
-	p.infoCur.Title = info.Title
-	p.infoCur.Thumbnail = info.Thumbnail
-	p.infoCur.Position = 0.0
-	p.infoCur.Playing = true
 	p.infoChan <- p.infoCur
 
 	return nil
