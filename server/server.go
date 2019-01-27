@@ -14,7 +14,7 @@ import (
 )
 
 type Server struct {
-	playerInstance player.Player
+	playerInstance *player.Player
 	subscribers    *sync.Map
 	curInfo        *atomic.Value
 	publishMutex   *sync.Mutex
@@ -76,7 +76,6 @@ func (s *Server) ListenAndServe(addr string) error {
 	}
 	defer p.Close()
 	s.playerInstance = p
-	go s.playerInstance.Start()
 
 	// setup networking
 	lis, err := net.Listen("tcp", addr)

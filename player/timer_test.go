@@ -13,7 +13,7 @@ func TestPlay(t *testing.T) {
 	done := make(chan struct{})
 	expected := time.Second.Nanoseconds()
 
-	timer := newTimer(time.Second*1, func() {
+	timer := newTimer(1, func() {
 		done <- struct{}{}
 	})
 
@@ -29,13 +29,13 @@ func TestPlay(t *testing.T) {
 func TestSeek(t *testing.T) {
 	start := time.Now()
 	done := make(chan struct{})
-	expected := time.Second.Nanoseconds()
+	expected := (2 * time.Second).Nanoseconds()
 
-	timer := newTimer(time.Second*10, func() {
+	timer := newTimer(511, func() {
 		done <- struct{}{}
 	})
 
-	timer.seek(0.9)
+	timer.seek(float64(509) / 511)
 	timer.play()
 	<-done
 
@@ -50,7 +50,7 @@ func TestPause(t *testing.T) {
 	done := make(chan struct{})
 	expected := (time.Second * 3).Nanoseconds()
 
-	timer := newTimer(time.Second*2, func() {
+	timer := newTimer(2, func() {
 		done <- struct{}{}
 	})
 

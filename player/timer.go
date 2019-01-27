@@ -1,7 +1,6 @@
 package player
 
 import (
-	"sync"
 	"time"
 )
 
@@ -13,24 +12,25 @@ type timer struct {
 	curDur    time.Duration
 	startTime time.Time
 	f         finishCallback
-	m         *sync.Mutex
 }
 
-func newTimer(d time.Duration, f finishCallback) *timer {
-	return &timer{
+func newTimer(seconds int64, f finishCallback) *timer {
+	d := time.Second * time.Duration(seconds)
+
+	t := timer{
 		t:       nil,
 		origDur: d,
 		curDur:  d,
 		f:       f,
-		m:       &sync.Mutex{},
 	}
+
+	t.play()
+	return &t
 }
 
 // play does nothing if t is not nil. Else, play starts timer
 // and set startTime to be the current time
 func (t *timer) play() {
-	t.m.Lock()
-	defer t.m.Unlock()
 	if t.t != nil {
 		return
 	}
@@ -42,8 +42,6 @@ func (t *timer) play() {
 // pause does nothing if t is nil. Else, pause set curDur with elapsed time
 // from startTime, and set t to be nil
 func (t *timer) pause() {
-	t.m.Lock()
-	defer t.m.Unlock()
 	if t.t == nil {
 		return
 	}
@@ -58,8 +56,6 @@ func (t *timer) pause() {
 // if t is not nil. seek will stop and reset timer with properly and
 // set startTime to be current time.
 func (t *timer) seek(pos float64) {
-	t.m.Lock()
-	defer t.m.Unlock()
 	t.curDur = t.origDur - time.Duration(pos*float64(t.origDur))
 
 	if t.t != nil {
@@ -72,12 +68,15 @@ func (t *timer) seek(pos float64) {
 // stop does nothing if t is nil. Else, it'll stop the timer to avoid
 // callback leak and set t to be nil
 func (t *timer) stop() {
-	t.m.Lock()
-	defer t.m.Unlock()
 	if t.t == nil {
 		return
 	}
 
 	t.t.Stop()
 	t.t = nil
+}
+
+// pos gets current position in video in range of [0.0, 1.0]
+func (t *timer) pos() float64 {
+	return (t.origDur - t.curDur).Seconds() / t.origDur.Seconds()
 }

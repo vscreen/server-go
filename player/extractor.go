@@ -22,7 +22,7 @@ type VideoInfo struct {
 	Title     string `json:"title"`
 	Thumbnail string `json:"thumbnail"`
 	URL       string `json:"url"`
-	Duration  uint64 `json:"duration"`
+	Duration  int64  `json:"duration"`
 }
 
 func extract(url string) (*VideoInfo, error) {
