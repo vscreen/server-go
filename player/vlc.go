@@ -12,13 +12,6 @@ import (
 	"os/exec"
 )
 
-const (
-	vlcPassword = "vscreen"
-	vlcPort     = 8081
-	vlcHost     = "localhost"
-	vlcBin      = "/Applications/VLC.app/Contents/MacOS/VLC"
-)
-
 type vlcPlayer struct {
 }
 

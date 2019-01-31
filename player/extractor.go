@@ -13,10 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	ytdlPath string
-)
-
 // VideoInfo is a data structure extracted info from the given url
 type VideoInfo struct {
 	Title     string `json:"title"`

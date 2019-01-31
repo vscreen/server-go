@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-const (
-	socketName = "vscreen.sock"
-)
-
 type mpvCommand struct {
 	Command []interface{} `json:"command"`
 }
@@ -33,7 +29,7 @@ func mpvNew() (*mpvPlayer, error) {
 		return nil, err
 	}
 
-	socketPath := filepath.Join(tmpDir, socketName)
+	socketPath := filepath.Join(tmpDir, mpvSocketName)
 	cmd := exec.Command("mpv",
 		"--msg-level=all=error",
 		"--idle=yes",
