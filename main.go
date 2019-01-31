@@ -1,15 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	vplayer "github.com/vscreen/server-go/player"
 	"github.com/vscreen/server-go/server"
 )
 
 func main() {
 	var logLevel string
+	var player string
+	players := strings.Join(vplayer.Players, "|")
 
 	app := cli.NewApp()
 	app.Name = "vscreen"
@@ -19,7 +24,13 @@ func main() {
 			Name:        "log-level, l",
 			Value:       "info",
 			Destination: &logLevel,
-			Usage:       "set log level. [debug|info|error]",
+			Usage:       "set log level [debug|info|error]",
+		},
+		cli.StringFlag{
+			Name:        "player, p",
+			Value:       "vlc",
+			Destination: &player,
+			Usage:       fmt.Sprintf("set player interface [%s]", players),
 		},
 	}
 
@@ -34,7 +45,13 @@ func main() {
 			log.SetLevel(log.InfoLevel)
 		}
 
-		s, err := server.New()
+		p, err := vplayer.New(player)
+		if err != nil {
+			return err
+		}
+		defer p.Close()
+
+		s, err := server.New(p)
 		if err != nil {
 			return err
 		}

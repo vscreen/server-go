@@ -9,22 +9,22 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/vscreen/server-go/player"
+	vplayer "github.com/vscreen/server-go/player"
 	"google.golang.org/grpc"
 )
 
 type Server struct {
-	playerInstance *player.Player
+	playerInstance *vplayer.Player
 	subscribers    *sync.Map
 	curInfo        *atomic.Value
 	publishMutex   *sync.Mutex
 }
 
-func New() (*Server, error) {
+func New(player *vplayer.Player) (*Server, error) {
 	curInfo := atomic.Value{}
 
 	return &Server{
-		playerInstance: nil,
+		playerInstance: player,
 		subscribers:    &sync.Map{},
 		curInfo:        &curInfo,
 	}, nil
@@ -69,14 +69,6 @@ func (s *Server) startNotifierService() {
 }
 
 func (s *Server) ListenAndServe(addr string) error {
-	// setup player first
-	p, err := player.New()
-	if err != nil {
-		return err
-	}
-	defer p.Close()
-	s.playerInstance = p
-
 	// setup networking
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
