@@ -4,7 +4,7 @@ package player
 
 // New creates a player interface
 func New() (*Player, error) {
-	b, err := mpvNew()
+	b, err := vlcNew()
 	if err != nil {
 		return nil, err
 	}
