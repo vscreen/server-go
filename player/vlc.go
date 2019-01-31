@@ -21,6 +21,7 @@ func vlcNew() (*vlcPlayer, error) {
 		"--fullscreen",
 		"--no-loop",
 		"--no-osd",
+		"--play-and-stop",
 		"--intf=macosx",
 		"--extraintf=http",
 		fmt.Sprintf("--http-password=%s", vlcPassword),
