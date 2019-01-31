@@ -202,7 +202,7 @@ func (p *Player) Add(url string) error {
 		return nil
 	}
 
-	if err := p.b.add(url); err != nil {
+	if err := p.b.add(info.URL); err != nil {
 		return err
 	}
 	p.videoTimer = newTimer(info.Duration, p.onFinish)
