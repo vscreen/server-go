@@ -5,10 +5,13 @@ func New(player string) (*Player, error) {
 	var b backendPlayer
 	var err error
 
+	ytdlInit()
+
 	switch player {
 	case MPV:
 		b, err = mpvNew()
 	case OMX:
+		omxInit()
 		b, err = omxNew()
 	default: // vlc is default
 		b, err = vlcNew()

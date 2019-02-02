@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func init() {
+func omxInit() {
 	user, err := user.Current()
 	if err != nil {
 		log.Fatal(err)
@@ -66,8 +66,11 @@ func (p *omxPlayer) pause() error {
 	return p.obj.Call("org.mpris.MediaPlayer2.Player.Pause", 0).Err
 }
 
-func (p *omxPlayer) add(url string) error {
-	fmt.Println("adding", url)
+func (p *omxPlayer) stop() error {
+	return p.obj.Call("org.mpris.MediaPlayer2.Player.Stop", 0).Err
+}
+
+func (p *omxPlayer) set(url string) error {
 	err := p.obj.Call("org.mpris.MediaPlayer2.Player.OpenUri", 0, url).Err
 	if err != nil {
 		fmt.Println("couldn't find omx session, starting one")

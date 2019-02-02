@@ -28,7 +28,7 @@ var (
 	ytdlOut *bufio.Scanner
 )
 
-func init() {
+func ytdlInit() {
 	var err error
 
 	log.Info("[extractor] cheking for a new update for youtube-dl")

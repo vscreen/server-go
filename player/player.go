@@ -13,7 +13,8 @@ type backendPlayer interface {
 	// These operations are thread safe
 	play() error
 	pause() error
-	add(url string) error
+	stop() error
+	set(url string) error
 	seek(position float64) error
 	close()
 }
@@ -64,7 +65,7 @@ func (p *Player) onFinish() {
 		p.playlist = p.playlist[1:]
 
 		// TODO! maybe todo something with error here
-		p.b.add(info.URL)
+		p.b.set(info.URL)
 		p.infoCur.Title = info.Title
 		p.infoCur.Thumbnail = info.Thumbnail
 		p.infoCur.Position = 0.0
@@ -126,8 +127,7 @@ func (p *Player) Stop() error {
 		return nil
 	}
 
-	// stop == seek(1.0)
-	if err := p.b.seek(1.0); err != nil {
+	if err := p.b.stop(); err != nil {
 		return err
 	}
 	p.videoTimer.stop()
@@ -168,7 +168,7 @@ func (p *Player) Next() error {
 		info := p.playlist[0]
 		p.playlist = p.playlist[1:]
 
-		if err := p.b.add(info.URL); err != nil {
+		if err := p.b.set(info.URL); err != nil {
 			return err
 		}
 		p.videoTimer.stop()
@@ -202,7 +202,7 @@ func (p *Player) Add(url string) error {
 		return nil
 	}
 
-	if err := p.b.add(info.URL); err != nil {
+	if err := p.b.set(info.URL); err != nil {
 		return err
 	}
 	p.videoTimer = newTimer(info.Duration, p.onFinish)

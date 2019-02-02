@@ -1,5 +1,8 @@
 package player
 
+// Reference:
+//  - https://github.com/mpv-player/mpv/blob/master/DOCS/man/input.rst
+
 import (
 	"encoding/json"
 	"errors"
@@ -105,7 +108,11 @@ func (p *mpvPlayer) pause() error {
 	return p.send("set_property", "pause", true)
 }
 
-func (p *mpvPlayer) add(url string) error {
+func (p *mpvPlayer) stop() error {
+	return p.send("stop")
+}
+
+func (p *mpvPlayer) set(url string) error {
 	return p.send("loadfile", url, "replace")
 }
 

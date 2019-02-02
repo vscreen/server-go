@@ -53,7 +53,14 @@ func (p *vlcPlayer) pause() error {
 	return err
 }
 
-func (p *vlcPlayer) add(url string) error {
+func (p *vlcPlayer) stop() error {
+	args := netURL.Values{}
+	args.Set("command", "pl_stop")
+	_, err := p.get(args)
+	return err
+}
+
+func (p *vlcPlayer) set(url string) error {
 	args := netURL.Values{}
 	args.Set("command", "in_play")
 	args.Set("input", url)
