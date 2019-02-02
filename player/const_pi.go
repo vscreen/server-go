@@ -6,7 +6,7 @@ package player
 import "fmt"
 
 // <GLOBAL>
-var Players = []string{MPV, VLC}
+var Players = []string{MPV, VLC, OMX}
 
 // <VLC>
 const (

@@ -8,6 +8,8 @@ func New(player string) (*Player, error) {
 	switch player {
 	case MPV:
 		b, err = mpvNew()
+	case OMX:
+		b, err = omxNew()
 	default: // vlc is default
 		b, err = vlcNew()
 	}

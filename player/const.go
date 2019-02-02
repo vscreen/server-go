@@ -10,6 +10,7 @@ const (
 	// cross-platform multimedia player and framework that plays most multimedia
 	// files as well as DVDs, Audio CDs, VCDs, and various streaming protocols.
 	VLC = "vlc"
+	OMX = "omx"
 )
 
 // <MPV>
@@ -22,6 +23,11 @@ const (
 	vlcPassword = "vscreen"
 	vlcPort     = 8081
 	vlcHost     = "localhost"
+)
+
+// <OMX>
+const (
+	omxBin = "omxplayer"
 )
 
 // <YTDL>

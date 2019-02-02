@@ -3,4 +3,4 @@ build:
 	go build
 
 pi:
-	GOOS=linux GOARCH=arm go build -tags pi
+	GOOS=linux GOARCH=arm GOARM=7 go build -tags pi
