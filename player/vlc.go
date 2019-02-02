@@ -16,18 +16,7 @@ type vlcPlayer struct {
 }
 
 func vlcNew() (*vlcPlayer, error) {
-	cmd := exec.Command(
-		vlcBin,
-		"--fullscreen",
-		"--no-loop",
-		"--no-osd",
-		"--play-and-stop",
-		"--intf=macosx",
-		"--extraintf=http",
-		fmt.Sprintf("--http-password=%s", vlcPassword),
-		fmt.Sprintf("--http-port=%d", vlcPort),
-	)
-
+	cmd := exec.Command(vlcBin, vlcArgs...)
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		return nil, err

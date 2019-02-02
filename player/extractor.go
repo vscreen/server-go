@@ -1,8 +1,10 @@
 package player
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -21,23 +23,14 @@ type VideoInfo struct {
 	Duration  int64  `json:"duration"`
 }
 
-func extract(url string) (*VideoInfo, error) {
-	var buff bytes.Buffer
-	var info VideoInfo
-
-	cmd := exec.Command("python", ytdlPath, "-fbest", "-j", url)
-	cmd.Stdout = &buff
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-
-	if err := json.NewDecoder(&buff).Decode(&info); err != nil {
-		return nil, err
-	}
-	return &info, nil
-}
+var (
+	ytdlIn  io.WriteCloser
+	ytdlOut *bufio.Scanner
+)
 
 func init() {
+	var err error
+
 	log.Info("[extractor] cheking for a new update for youtube-dl")
 	var updated bool
 
@@ -80,4 +73,46 @@ func init() {
 		log.Info("[extractor] youtube-dl is up to date already")
 	}
 
+	// start youtube-dl service
+	cmd := exec.Command(
+		"./youtube-dl",
+		"--ignore-config",
+		"--force-ipv4",
+		"--no-geo-bypass",
+		"--skip-unavailable-fragments",
+		"--no-warnings",
+		"--dump-json",
+		"--no-call-home",
+		"-fbest",
+		"--youtube-skip-dash-manifest",
+	)
+
+	ytdlIn, err = cmd.StdinPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cmd.Stderr = os.Stderr
+
+	if err = cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	ytdlOut = bufio.NewScanner(out)
+}
+
+func extract(url string) (*VideoInfo, error) {
+	fmt.Fprintln(ytdlIn, url)
+	if !ytdlOut.Scan() {
+		return nil, errors.New("youtube-dl has stopped")
+	}
+
+	var info VideoInfo
+	json.Unmarshal(ytdlOut.Bytes(), &info)
+	return &info, nil
 }
