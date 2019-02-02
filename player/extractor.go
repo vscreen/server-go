@@ -76,15 +76,8 @@ func init() {
 	// start youtube-dl service
 	cmd := exec.Command(
 		"./youtube-dl",
-		"--ignore-config",
-		"--force-ipv4",
-		"--no-geo-bypass",
-		"--skip-unavailable-fragments",
-		"--no-warnings",
 		"--dump-json",
-		"--no-call-home",
 		"-fbest",
-		"--youtube-skip-dash-manifest",
 	)
 
 	ytdlIn, err = cmd.StdinPipe()
