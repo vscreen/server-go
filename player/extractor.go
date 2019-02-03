@@ -51,7 +51,20 @@ func ytdlInit() {
 	}
 
 	if !updated {
-		resp, err := http.Get("https://yt-dl.org/downloads/latest/youtube-dl")
+		resp, err := http.Get("https://api.github.com/repos/vscreen/youtube-dl/releases/latest")
+		if err != nil {
+			log.Fatal("[extractor] failed to request the latest asset")
+		}
+		defer resp.Body.Close()
+
+		data := make(map[string]interface{})
+		if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			log.Fatal("[extractor] failed to get the latest asset")
+		}
+		latestAsset := data["assets"].([]interface{})[0].(map[string]interface{})
+		url := latestAsset["browser_download_url"].(string)
+
+		resp, err = http.Get(url)
 		if err != nil {
 			log.Fatal("[extractor] failed to update youtube-dl")
 		}
@@ -75,6 +88,7 @@ func ytdlInit() {
 
 	// start youtube-dl service
 	cmd := exec.Command(
+		"python",
 		"./youtube-dl",
 		"--dump-json",
 		"-fbest",
