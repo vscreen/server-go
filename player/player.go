@@ -153,7 +153,7 @@ func (p *Player) Next() error {
 	}
 
 	if len(p.playlist) == 0 {
-		if err := p.b.seek(1.0); err != nil {
+		if err := p.b.stop(); err != nil {
 			return err
 		}
 
