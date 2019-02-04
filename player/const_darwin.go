@@ -23,7 +23,7 @@ func init() {
 		"--no-loop",
 		"--no-osd",
 		"--play-and-stop",
-		"--intf=macosx"
+		"--intf=macosx",
 		"--extraintf=http",
 		fmt.Sprintf("--http-password=%s", vlcPassword),
 		fmt.Sprintf("--http-port=%d", vlcPort),
