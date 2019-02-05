@@ -88,7 +88,9 @@ func (s *Server) ListenAndServe(addr string) error {
 // GRPC's vscreen implementation
 
 func (s *Server) Auth(ctx context.Context, c *Credential) (*Status, error) {
-	return nil, nil
+	return &Status{
+		Code: StatusCode_OK,
+	}, nil
 }
 
 func (s *Server) Play(ctx context.Context, _ *Empty) (*Status, error) {
