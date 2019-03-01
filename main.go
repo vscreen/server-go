@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -56,7 +57,12 @@ func main() {
 			return err
 		}
 
-		return s.ListenAndServe(":8080")
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		publish(ctx)
+
+		return s.ListenAndServe(fmt.Sprintf(":%d", port))
 	}
 
 	err := app.Run(os.Args)
