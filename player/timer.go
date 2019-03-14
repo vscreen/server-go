@@ -3,13 +3,15 @@ package player
 import (
 	"math"
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 type timer struct {
 	t        *time.Ticker
-	position float64       // in seconds
-	duration float64       // in seconds
-	done     chan struct{} // tell ticker to stop
+	position *atomic.Float64 // in seconds
+	duration float64         // in seconds. doesn't need to be atomic since we just read
+	done     chan struct{}   // tell ticker to stop
 	c        chan<- float64
 	C        <-chan float64
 }
@@ -19,7 +21,7 @@ func newTimer(seconds int64) *timer {
 
 	t := timer{
 		t:        nil,
-		position: 0,
+		position: atomic.NewFloat64(0.0),
 		duration: float64(seconds),
 		done:     nil,
 		C:        positionChan,
@@ -38,17 +40,17 @@ func (t *timer) play() {
 
 	t.t = time.NewTicker(time.Second)
 	t.done = make(chan struct{})
-	go func(ticker *time.Ticker, done <-chan struct{}) {
+	go func(ticker <-chan time.Time, done <-chan struct{}) {
 	loop:
 		for {
 			select {
-			case <-ticker.C:
+			case <-ticker:
 			case <-done:
 				break loop
 			}
 
-			t.position++
-			curPos := t.position / t.duration // convert it to [0.0, 1.0]
+			t.position.Add(1.0)
+			curPos := t.position.Load() / t.duration // convert it to [0.0, 1.0]
 			if curPos >= 1.0 {
 				defer recover() // TODO! Avoid double close for c channel
 				close(t.c)
@@ -61,7 +63,7 @@ func (t *timer) play() {
 			default:
 			}
 		}
-	}(t.t, t.done)
+	}(t.t.C, t.done)
 }
 
 // pause does nothing if t is nil. Else, pause set curDur with elapsed time
@@ -88,7 +90,7 @@ func (t *timer) seek(pos float64) {
 		t.t = nil
 	}
 
-	t.position = math.Round(pos * t.duration)
+	t.position.Store(math.Round(pos * t.duration))
 
 	// If the timer wasn't paused, resume the ticking
 	if running {

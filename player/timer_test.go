@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// allows only 2 ms off
+// allows only 1 ms off
 const eps = 1000000 // 1000000ns = 1000μs = 1ms
-const cases = 100
+const cases = 10
 
 func TestPlay(t *testing.T) {
 	for i := 0; i < cases; i++ {
@@ -32,7 +32,7 @@ func TestPlay(t *testing.T) {
 
 			elapsed := time.Since(start).Nanoseconds()
 			if !(expected-eps <= elapsed && elapsed <= expected+eps) {
-				t.Error("play failed")
+				t.Errorf("expected: %d, but got: %d", expected, elapsed)
 			}
 		})
 	}
@@ -60,7 +60,7 @@ func TestSeek(t *testing.T) {
 
 			elapsed := time.Since(start).Nanoseconds()
 			if !(expected-eps <= elapsed && elapsed <= expected+eps) {
-				t.Error("seek failed")
+				t.Errorf("expected: %d, but got: %d", expected, elapsed)
 			}
 		})
 	}
@@ -92,8 +92,28 @@ func TestPause(t *testing.T) {
 
 			elapsed := time.Since(start).Nanoseconds()
 			if !(expected-eps <= elapsed && elapsed <= expected+eps) {
-				t.Error("pause failed")
+				t.Errorf("expected: %d, but got: %d", expected, elapsed)
 			}
 		})
+	}
+}
+
+func BenchmarkPause(b *testing.B) {
+
+	for n := 0; n < b.N; n++ {
+		done := make(chan struct{})
+		timer := newTimer(2)
+		go func() {
+			for range timer.C {
+			}
+			done <- struct{}{}
+		}()
+
+		timer.play()
+		<-time.After(time.Second)
+		timer.pause()
+		<-time.After(time.Second)
+		timer.play()
+		<-done
 	}
 }
