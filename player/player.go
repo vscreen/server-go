@@ -44,8 +44,7 @@ func (p *Player) onFinish() {
 	defer p.m.Unlock()
 
 	if len(p.playlist) == 0 {
-		p.State.dispatch(stateReset)
-
+		p.State.reset()
 		p.videoTimer = nil
 	} else {
 		info := p.playlist[0]
@@ -53,13 +52,8 @@ func (p *Player) onFinish() {
 
 		// TODO! maybe todo something with error here
 		p.b.set(info.URL)
-		p.State.dispatch(func(curInfo *Info) {
-			curInfo.Title = info.Title
-			curInfo.Thumbnail = info.Thumbnail
-			curInfo.Position = 0.0
-			curInfo.Playing = true
-		})
 		p.videoTimer = newTimer(info.Duration, p.onFinish)
+		p.State.next(info.Title, info.Thumbnail)
 	}
 }
 
@@ -69,18 +63,15 @@ func (p *Player) Play() error {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	playing := false
-	if p.videoTimer != nil {
-		if err := p.b.play(); err != nil {
-			return err
-		}
-		p.videoTimer.play()
-		playing = true
+	if p.videoTimer == nil {
+		return nil
 	}
 
-	p.State.dispatch(func(curInfo *Info) {
-		curInfo.Playing = playing
-	})
+	if err := p.b.play(); err != nil {
+		return err
+	}
+	p.videoTimer.play()
+	p.State.setPlaying(true)
 	return nil
 }
 
@@ -98,11 +89,7 @@ func (p *Player) Pause() error {
 		return err
 	}
 	p.videoTimer.pause()
-
-	p.State.dispatch(func(curInfo *Info) {
-		curInfo.Position = p.videoTimer.pos()
-		curInfo.Playing = false
-	})
+	p.State.setPlaying(false)
 
 	return nil
 }
@@ -122,8 +109,8 @@ func (p *Player) Stop() error {
 	p.videoTimer.stop()
 
 	p.playlist = p.playlist[:0]
-	p.State.dispatch(stateReset)
 	p.videoTimer = nil
+	p.State.reset()
 
 	return nil
 }
@@ -144,8 +131,7 @@ func (p *Player) Next() error {
 
 		p.videoTimer.stop()
 		p.videoTimer = nil
-
-		p.State.dispatch(stateReset)
+		p.State.reset()
 	} else {
 		info := p.playlist[0]
 		p.playlist = p.playlist[1:]
@@ -153,15 +139,10 @@ func (p *Player) Next() error {
 		if err := p.b.set(info.URL); err != nil {
 			return err
 		}
+
 		p.videoTimer.stop()
 		p.videoTimer = newTimer(info.Duration, p.onFinish)
-
-		p.State.dispatch(func(curInfo *Info) {
-			curInfo.Position = 0.0
-			curInfo.Playing = true
-			curInfo.Title = info.Title
-			curInfo.Thumbnail = info.Thumbnail
-		})
+		p.State.next(info.Title, info.Thumbnail)
 	}
 
 	return nil
@@ -187,15 +168,9 @@ func (p *Player) Add(url string) error {
 	if err := p.b.set(info.URL); err != nil {
 		return err
 	}
+
 	p.videoTimer = newTimer(info.Duration, p.onFinish)
-
-	p.State.dispatch(func(curInfo *Info) {
-		curInfo.Position = 0.0
-		curInfo.Playing = true
-		curInfo.Title = info.Title
-		curInfo.Thumbnail = info.Thumbnail
-	})
-
+	p.State.next(info.Title, info.Thumbnail)
 	return nil
 }
 
@@ -207,12 +182,9 @@ func (p *Player) Seek(position float64) error {
 	if err := p.b.seek(position); err != nil {
 		return err
 	}
+
 	p.videoTimer.seek(position)
-
-	p.State.dispatch(func(curInfo *Info) {
-		curInfo.Position = position
-	})
-
+	p.State.seek(position)
 	return nil
 }
 

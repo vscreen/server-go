@@ -13,10 +13,6 @@ type Info struct {
 
 type action func(curInfo *Info)
 
-func stateReset(curInfo *Info) {
-	*curInfo = Info{}
-}
-
 // state maintains internal video's state by using the actor model.
 type state struct {
 	c              chan action
@@ -50,8 +46,31 @@ func (s *state) actorLoop(mailbox <-chan action) {
 	}
 }
 
-func (s *state) dispatch(act action) {
-	s.c <- act
+func (s *state) reset() {
+	s.c <- func(curInfo *Info) {
+		*curInfo = Info{}
+	}
+}
+
+func (s *state) next(title, thumbnail string) {
+	s.c <- func(curInfo *Info) {
+		curInfo.Position = 0.0
+		curInfo.Playing = true
+		curInfo.Title = title
+		curInfo.Thumbnail = thumbnail
+	}
+}
+
+func (s *state) seek(position float64) {
+	s.c <- func(curInfo *Info) {
+		curInfo.Position = position
+	}
+}
+
+func (s *state) setPlaying(isPlaying bool) {
+	s.c <- func(curInfo *Info) {
+		curInfo.Playing = isPlaying
+	}
 }
 
 // Subscribe lets the subscriber knows the newest info.
