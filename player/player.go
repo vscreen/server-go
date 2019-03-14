@@ -19,32 +19,21 @@ type backendPlayer interface {
 	close()
 }
 
-// Info represents the current state of the video player
-type Info struct {
-	Title     string
-	Thumbnail string
-	Volume    float64
-	Position  float64
-	Playing   bool
-}
-
 // Player is an abstraction of a video player.
 // the backend player is determined by the platform
 type Player struct {
+	State      *state
 	b          backendPlayer
 	playlist   []*VideoInfo
-	infoCur    Info
-	infoChan   chan Info
 	videoTimer *timer
 	m          *sync.Mutex
 }
 
 func new(b backendPlayer) (*Player, error) {
 	return &Player{
+		State:      newState(),
 		b:          b,
 		playlist:   make([]*VideoInfo, 0),
-		infoChan:   make(chan Info),
-		infoCur:    Info{},
 		videoTimer: nil,
 		m:          &sync.Mutex{},
 	}, nil
@@ -55,10 +44,8 @@ func (p *Player) onFinish() {
 	defer p.m.Unlock()
 
 	if len(p.playlist) == 0 {
-		p.infoCur.Title = ""
-		p.infoCur.Thumbnail = ""
-		p.infoCur.Position = 0.0
-		p.infoCur.Playing = false
+		p.State.dispatch(stateReset)
+
 		p.videoTimer = nil
 	} else {
 		info := p.playlist[0]
@@ -66,14 +53,14 @@ func (p *Player) onFinish() {
 
 		// TODO! maybe todo something with error here
 		p.b.set(info.URL)
-		p.infoCur.Title = info.Title
-		p.infoCur.Thumbnail = info.Thumbnail
-		p.infoCur.Position = 0.0
-		p.infoCur.Playing = true
+		p.State.dispatch(func(curInfo *Info) {
+			curInfo.Title = info.Title
+			curInfo.Thumbnail = info.Thumbnail
+			curInfo.Position = 0.0
+			curInfo.Playing = true
+		})
 		p.videoTimer = newTimer(info.Duration, p.onFinish)
 	}
-
-	p.infoChan <- p.infoCur
 }
 
 // Play plays the current video. If there's no video,
@@ -82,17 +69,18 @@ func (p *Player) Play() error {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	if p.videoTimer == nil {
-		p.infoCur.Playing = false
-	} else {
+	playing := false
+	if p.videoTimer != nil {
 		if err := p.b.play(); err != nil {
 			return err
 		}
 		p.videoTimer.play()
-		p.infoCur.Playing = true
+		playing = true
 	}
 
-	p.infoChan <- p.infoCur
+	p.State.dispatch(func(curInfo *Info) {
+		curInfo.Playing = playing
+	})
 	return nil
 }
 
@@ -111,9 +99,10 @@ func (p *Player) Pause() error {
 	}
 	p.videoTimer.pause()
 
-	p.infoCur.Playing = false
-	p.infoCur.Position = p.videoTimer.pos()
-	p.infoChan <- p.infoCur
+	p.State.dispatch(func(curInfo *Info) {
+		curInfo.Position = p.videoTimer.pos()
+		curInfo.Playing = false
+	})
 
 	return nil
 }
@@ -133,12 +122,8 @@ func (p *Player) Stop() error {
 	p.videoTimer.stop()
 
 	p.playlist = p.playlist[:0]
-	p.infoCur.Position = 0.0
-	p.infoCur.Playing = false
-	p.infoCur.Title = ""
-	p.infoCur.Thumbnail = ""
+	p.State.dispatch(stateReset)
 	p.videoTimer = nil
-	p.infoChan <- p.infoCur
 
 	return nil
 }
@@ -160,10 +145,7 @@ func (p *Player) Next() error {
 		p.videoTimer.stop()
 		p.videoTimer = nil
 
-		p.infoCur.Position = 0.0
-		p.infoCur.Playing = false
-		p.infoCur.Title = ""
-		p.infoCur.Thumbnail = ""
+		p.State.dispatch(stateReset)
 	} else {
 		info := p.playlist[0]
 		p.playlist = p.playlist[1:]
@@ -174,13 +156,13 @@ func (p *Player) Next() error {
 		p.videoTimer.stop()
 		p.videoTimer = newTimer(info.Duration, p.onFinish)
 
-		p.infoCur.Title = info.Title
-		p.infoCur.Thumbnail = info.Thumbnail
-		p.infoCur.Position = 0.0
-		p.infoCur.Playing = true
+		p.State.dispatch(func(curInfo *Info) {
+			curInfo.Position = 0.0
+			curInfo.Playing = true
+			curInfo.Title = info.Title
+			curInfo.Thumbnail = info.Thumbnail
+		})
 	}
-
-	p.infoChan <- p.infoCur
 
 	return nil
 }
@@ -207,11 +189,12 @@ func (p *Player) Add(url string) error {
 	}
 	p.videoTimer = newTimer(info.Duration, p.onFinish)
 
-	p.infoCur.Title = info.Title
-	p.infoCur.Thumbnail = info.Thumbnail
-	p.infoCur.Position = 0.0
-	p.infoCur.Playing = true
-	p.infoChan <- p.infoCur
+	p.State.dispatch(func(curInfo *Info) {
+		curInfo.Position = 0.0
+		curInfo.Playing = true
+		curInfo.Title = info.Title
+		curInfo.Thumbnail = info.Thumbnail
+	})
 
 	return nil
 }
@@ -226,19 +209,14 @@ func (p *Player) Seek(position float64) error {
 	}
 	p.videoTimer.seek(position)
 
-	p.infoCur.Position = position
-	p.infoChan <- p.infoCur
+	p.State.dispatch(func(curInfo *Info) {
+		curInfo.Position = position
+	})
 
 	return nil
-}
-
-// InfoListener returns a channel to get the most up to date info
-func (p *Player) InfoListener() <-chan Info {
-	return p.infoChan
 }
 
 // Close cleans up resources
 func (p *Player) Close() {
 	p.b.close()
-	close(p.infoChan)
 }

@@ -30,8 +30,11 @@ func New(player *vplayer.Player) (*Server, error) {
 	}, nil
 }
 
-func (s *Server) startNotifierService() {
-	infoChannel := s.playerInstance.InfoListener()
+func (s *Server) startNotifierService() error {
+	infoChannel, err := s.playerInstance.State.Subscribe()
+	if err != nil {
+		log.Error("[server] failed to start notifier service")
+	}
 	log.Info("[server] created notifier service")
 
 	for info := range infoChannel {
@@ -66,6 +69,7 @@ func (s *Server) startNotifierService() {
 		return true
 	})
 	log.Info("[server] closed notifier service")
+	return nil
 }
 
 func (s *Server) ListenAndServe(addr string) error {
