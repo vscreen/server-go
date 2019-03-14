@@ -15,8 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// VideoInfo is a data structure extracted info from the given url
-type VideoInfo struct {
+// videoInfo is a data structure extracted info from the given url
+type videoInfo struct {
 	Title     string `json:"title"`
 	Thumbnail string `json:"thumbnail"`
 	URL       string `json:"url"`
@@ -113,13 +113,13 @@ func ytdlInit() {
 	ytdlOut = bufio.NewScanner(out)
 }
 
-func extract(url string) (*VideoInfo, error) {
+func extract(url string) (*videoInfo, error) {
 	fmt.Fprintln(ytdlIn, url)
 	if !ytdlOut.Scan() {
 		return nil, errors.New("youtube-dl has stopped")
 	}
 
-	var info VideoInfo
+	var info videoInfo
 	json.Unmarshal(ytdlOut.Bytes(), &info)
 	return &info, nil
 }

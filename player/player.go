@@ -24,7 +24,7 @@ type backendPlayer interface {
 type Player struct {
 	State      *state
 	b          backendPlayer
-	playlist   []*VideoInfo
+	playlist   []*videoInfo
 	videoTimer *timer
 	m          *sync.Mutex
 }
@@ -33,7 +33,7 @@ func new(b backendPlayer) (*Player, error) {
 	return &Player{
 		State:      newState(),
 		b:          b,
-		playlist:   make([]*VideoInfo, 0),
+		playlist:   make([]*videoInfo, 0),
 		videoTimer: nil,
 		m:          &sync.Mutex{},
 	}, nil
