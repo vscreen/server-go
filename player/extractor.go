@@ -39,7 +39,7 @@ func ytdlInit() {
 		log.Fatal("[extractor]", curDir)
 	}
 
-	ytdlPath = filepath.Join(curDir, "youtube-dl")
+	ytdlPath = filepath.Join(curDir, "extractor.pyz")
 
 	// check youtube-dl
 	if info, err := os.Stat(ytdlPath); err == nil {
@@ -51,7 +51,7 @@ func ytdlInit() {
 	}
 
 	if !updated {
-		resp, err := http.Get("https://api.github.com/repos/vscreen/youtube-dl/releases/latest")
+		resp, err := http.Get("https://api.github.com/repos/vscreen/extractor/releases/latest")
 		if err != nil {
 			log.Fatal("[extractor] failed to request the latest asset")
 		}
@@ -89,9 +89,7 @@ func ytdlInit() {
 	// start youtube-dl service
 	cmd := exec.Command(
 		"python",
-		"./youtube-dl",
-		"--dump-json",
-		"-fbest",
+		ytdlPath,
 	)
 
 	ytdlIn, err = cmd.StdinPipe()
@@ -118,7 +116,6 @@ func extract(url string) (*videoInfo, error) {
 	if !ytdlOut.Scan() {
 		return nil, errors.New("youtube-dl has stopped")
 	}
-
 	var info videoInfo
 	json.Unmarshal(ytdlOut.Bytes(), &info)
 	return &info, nil
