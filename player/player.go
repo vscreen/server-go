@@ -90,6 +90,7 @@ func (p *Player) Pause() error {
 	}
 	p.videoTimer.pause()
 	p.State.setPlaying(false)
+	p.State.seek(p.videoTimer.pos())
 
 	return nil
 }
