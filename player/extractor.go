@@ -20,7 +20,7 @@ type videoInfo struct {
 	Title     string `json:"title"`
 	Thumbnail string `json:"thumbnail"`
 	URL       string `json:"url"`
-	Duration  int64  `json:"duration"`
+	Duration  uint64 `json:"duration"`
 }
 
 var (

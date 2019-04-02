@@ -9,6 +9,7 @@ type Info struct {
 	Volume    float64
 	Position  float64
 	Playing   bool
+	Duration  uint64
 }
 
 type action func(curInfo *Info)
@@ -52,12 +53,13 @@ func (s *state) reset() {
 	}
 }
 
-func (s *state) next(title, thumbnail string) {
+func (s *state) next(title, thumbnail string, duration uint64) {
 	s.c <- func(curInfo *Info) {
 		curInfo.Position = 0.0
 		curInfo.Playing = true
 		curInfo.Title = title
 		curInfo.Thumbnail = thumbnail
+		curInfo.Duration = duration
 	}
 }
 

@@ -44,6 +44,7 @@ func (s *Server) startNotifierService() error {
 			Volume:    info.Volume,
 			Position:  info.Position,
 			Playing:   info.Playing,
+			Duration:  info.Duration,
 		}
 
 		log.WithFields(log.Fields{
@@ -52,6 +53,7 @@ func (s *Server) startNotifierService() error {
 			"volume":    info.Volume,
 			"position":  info.Position,
 			"playing":   info.Playing,
+			"duration":  info.Duration,
 		}).Debug("[server] publishing current info to subscribers")
 
 		s.subscribers.Range(func(subscriberID, value interface{}) bool {

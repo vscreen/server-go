@@ -53,7 +53,7 @@ func (p *Player) onFinish() {
 		// TODO! maybe todo something with error here
 		p.b.set(info.URL)
 		p.videoTimer = newTimer(info.Duration, p.onFinish)
-		p.State.next(info.Title, info.Thumbnail)
+		p.State.next(info.Title, info.Thumbnail, info.Duration)
 	}
 }
 
@@ -143,7 +143,7 @@ func (p *Player) Next() error {
 
 		p.videoTimer.stop()
 		p.videoTimer = newTimer(info.Duration, p.onFinish)
-		p.State.next(info.Title, info.Thumbnail)
+		p.State.next(info.Title, info.Thumbnail, info.Duration)
 	}
 
 	return nil
@@ -171,7 +171,7 @@ func (p *Player) Add(url string) error {
 	}
 
 	p.videoTimer = newTimer(info.Duration, p.onFinish)
-	p.State.next(info.Title, info.Thumbnail)
+	p.State.next(info.Title, info.Thumbnail, info.Duration)
 	return nil
 }
 

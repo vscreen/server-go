@@ -14,7 +14,7 @@ type timer struct {
 	f         finishCallback
 }
 
-func newTimer(seconds int64, f finishCallback) *timer {
+func newTimer(seconds uint64, f finishCallback) *timer {
 	d := time.Second * time.Duration(seconds)
 
 	t := timer{
