@@ -8,13 +8,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	vplayer "github.com/vscreen/server-go/player"
+	"github.com/vscreen/server-go/player/backend"
 	"github.com/vscreen/server-go/server"
 )
 
 func main() {
 	var logLevel string
 	var player string
-	players := strings.Join(vplayer.Players, "|")
+	players := strings.Join(backend.Players, "|")
 
 	app := cli.NewApp()
 	app.Name = "vscreen"

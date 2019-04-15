@@ -1,15 +1,9 @@
-package player
-
-import (
-	"github.com/vscreen/server-go/player/extractor"
-)
+package backend
 
 // New creates a player interface
-func New(player string) (*Player, error) {
-	var b backendPlayer
+func New(player string) (Player, error) {
+	var b Player
 	var err error
-
-	extractor.Init()
 
 	switch player {
 	case MPV:
@@ -25,5 +19,5 @@ func New(player string) (*Player, error) {
 		return nil, err
 	}
 
-	return new(b)
+	return b, nil
 }

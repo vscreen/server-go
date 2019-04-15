@@ -1,4 +1,4 @@
-package player
+package backend
 
 // Reference:
 //  - https://github.com/mpv-player/mpv/blob/master/DOCS/man/input.rst
@@ -77,7 +77,7 @@ func tryDial(socketPath string, trials int, d time.Duration) (conn net.Conn, err
 }
 
 // Close cleans up mpvPlayer's resources
-func (p *mpvPlayer) close() {
+func (p *mpvPlayer) Close() {
 	p.socketConn.Close()
 }
 
@@ -100,22 +100,22 @@ func (p *mpvPlayer) send(cmd string, params ...interface{}) error {
 	return nil
 }
 
-func (p *mpvPlayer) play() error {
+func (p *mpvPlayer) Play() error {
 	return p.send("set_property", "pause", false)
 }
 
-func (p *mpvPlayer) pause() error {
+func (p *mpvPlayer) Pause() error {
 	return p.send("set_property", "pause", true)
 }
 
-func (p *mpvPlayer) stop() error {
+func (p *mpvPlayer) Stop() error {
 	return p.send("stop")
 }
 
-func (p *mpvPlayer) set(url string) error {
+func (p *mpvPlayer) Set(url string) error {
 	return p.send("loadfile", url, "replace")
 }
 
-func (p *mpvPlayer) seek(position float64) error {
+func (p *mpvPlayer) Seek(position float64) error {
 	return p.send("set_property", "percent-pos", position*100)
 }

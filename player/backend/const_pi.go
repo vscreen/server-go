@@ -1,7 +1,7 @@
 // +build pi
 // +build linux,arm
 
-package player
+package backend
 
 import "fmt"
 

@@ -1,4 +1,4 @@
-package player
+package backend
 
 import (
 	"fmt"
@@ -58,19 +58,19 @@ func omxNew() (*omxPlayer, error) {
 	}, nil
 }
 
-func (p *omxPlayer) play() error {
+func (p *omxPlayer) Play() error {
 	return p.obj.Call("org.mpris.MediaPlayer2.Player.Play", 0).Err
 }
 
-func (p *omxPlayer) pause() error {
+func (p *omxPlayer) Pause() error {
 	return p.obj.Call("org.mpris.MediaPlayer2.Player.Pause", 0).Err
 }
 
-func (p *omxPlayer) stop() error {
+func (p *omxPlayer) Stop() error {
 	return p.obj.Call("org.mpris.MediaPlayer2.Player.Stop", 0).Err
 }
 
-func (p *omxPlayer) set(url string) error {
+func (p *omxPlayer) Set(url string) error {
 	err := p.obj.Call("org.mpris.MediaPlayer2.Player.OpenUri", 0, url).Err
 	if err != nil {
 		fmt.Println("couldn't find omx session, starting one")
@@ -79,7 +79,7 @@ func (p *omxPlayer) set(url string) error {
 	return nil
 }
 
-func (p *omxPlayer) seek(position float64) error {
+func (p *omxPlayer) Seek(position float64) error {
 	dur, err := p.duration()
 	if err != nil {
 		return nil
@@ -90,7 +90,7 @@ func (p *omxPlayer) seek(position float64) error {
 	return nil
 }
 
-func (p *omxPlayer) close() {
+func (p *omxPlayer) Close() {
 
 }
 

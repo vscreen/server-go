@@ -1,4 +1,4 @@
-package player
+package backend
 
 // Reference:
 //  - https://wiki.videolan.org/VLC_HTTP_requests/
@@ -25,7 +25,7 @@ func vlcNew() (*vlcPlayer, error) {
 	return &vlcPlayer{}, nil
 }
 
-func (p *vlcPlayer) close() {
+func (p *vlcPlayer) Close() {
 }
 
 func (p *vlcPlayer) get(args netURL.Values) (*http.Response, error) {
@@ -39,28 +39,28 @@ func (p *vlcPlayer) get(args netURL.Values) (*http.Response, error) {
 	return http.DefaultClient.Do(req)
 }
 
-func (p *vlcPlayer) play() error {
+func (p *vlcPlayer) Play() error {
 	args := netURL.Values{}
 	args.Set("command", "pl_play")
 	_, err := p.get(args)
 	return err
 }
 
-func (p *vlcPlayer) pause() error {
+func (p *vlcPlayer) Pause() error {
 	args := netURL.Values{}
 	args.Set("command", "pl_pause")
 	_, err := p.get(args)
 	return err
 }
 
-func (p *vlcPlayer) stop() error {
+func (p *vlcPlayer) Stop() error {
 	args := netURL.Values{}
 	args.Set("command", "pl_stop")
 	_, err := p.get(args)
 	return err
 }
 
-func (p *vlcPlayer) set(url string) error {
+func (p *vlcPlayer) Set(url string) error {
 	args := netURL.Values{}
 	args.Set("command", "in_play")
 	args.Set("input", url)
@@ -68,7 +68,7 @@ func (p *vlcPlayer) set(url string) error {
 	return err
 }
 
-func (p *vlcPlayer) seek(position float64) error {
+func (p *vlcPlayer) Seek(position float64) error {
 	args := netURL.Values{}
 	args.Set("command", "seek")
 	args.Set("val", fmt.Sprintf("%f%%", position*100))

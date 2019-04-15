@@ -1,7 +1,7 @@
 // +build !pi
 // +build linux
 
-package player
+package backend
 
 import "fmt"
 

@@ -4,33 +4,27 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/vscreen/server-go/player/backend"
 	"github.com/vscreen/server-go/player/extractor"
 )
-
-// backendPlayer is an abstraction of a video player. It contains
-// some basic operations that should be available in most
-// video player applications out there.
-type backendPlayer interface {
-	// These operations are thread safe
-	play() error
-	pause() error
-	stop() error
-	set(url string) error
-	seek(position float64) error
-	close()
-}
 
 // Player is an abstraction of a video player.
 // the backend player is determined by the platform
 type Player struct {
 	State      *state
-	b          backendPlayer
+	b          backend.Player
 	playlist   []*extractor.VideoInfo
 	videoTimer *timer
 	m          *sync.Mutex
 }
 
-func new(b backendPlayer) (*Player, error) {
+func New(player string) (*Player, error) {
+	extractor.Init()
+	b, err := backend.New(player)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Player{
 		State:      newState(),
 		b:          b,
@@ -52,7 +46,7 @@ func (p *Player) onFinish() {
 		p.playlist = p.playlist[1:]
 
 		// TODO! maybe todo something with error here
-		p.b.set(info.URL)
+		p.b.Set(info.URL)
 		p.videoTimer = newTimer(info.Duration, p.onFinish)
 		p.State.next(info.Title, info.Thumbnail)
 	}
@@ -68,7 +62,7 @@ func (p *Player) Play() error {
 		return nil
 	}
 
-	if err := p.b.play(); err != nil {
+	if err := p.b.Play(); err != nil {
 		return err
 	}
 	p.videoTimer.play()
@@ -86,7 +80,7 @@ func (p *Player) Pause() error {
 		return nil
 	}
 
-	if err := p.b.pause(); err != nil {
+	if err := p.b.Pause(); err != nil {
 		return err
 	}
 	p.videoTimer.pause()
@@ -105,7 +99,7 @@ func (p *Player) Stop() error {
 		return nil
 	}
 
-	if err := p.b.stop(); err != nil {
+	if err := p.b.Stop(); err != nil {
 		return err
 	}
 	p.videoTimer.stop()
@@ -127,7 +121,7 @@ func (p *Player) Next() error {
 	}
 
 	if len(p.playlist) == 0 {
-		if err := p.b.stop(); err != nil {
+		if err := p.b.Stop(); err != nil {
 			return err
 		}
 
@@ -138,7 +132,7 @@ func (p *Player) Next() error {
 		info := p.playlist[0]
 		p.playlist = p.playlist[1:]
 
-		if err := p.b.set(info.URL); err != nil {
+		if err := p.b.Set(info.URL); err != nil {
 			return err
 		}
 
@@ -167,7 +161,7 @@ func (p *Player) Add(url string) error {
 		return nil
 	}
 
-	if err := p.b.set(info.URL); err != nil {
+	if err := p.b.Set(info.URL); err != nil {
 		return err
 	}
 
@@ -181,7 +175,7 @@ func (p *Player) Seek(position float64) error {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	if err := p.b.seek(position); err != nil {
+	if err := p.b.Seek(position); err != nil {
 		return err
 	}
 
@@ -192,5 +186,5 @@ func (p *Player) Seek(position float64) error {
 
 // Close cleans up resources
 func (p *Player) Close() {
-	p.b.close()
+	p.b.Close()
 }
