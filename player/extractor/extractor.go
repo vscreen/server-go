@@ -1,4 +1,4 @@
-package player
+package extractor
 
 import (
 	"bufio"
@@ -15,8 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// videoInfo is a data structure extracted info from the given url
-type videoInfo struct {
+// VideoInfo is a data structure extracted info from the given url
+type VideoInfo struct {
 	Title     string `json:"title"`
 	Thumbnail string `json:"thumbnail"`
 	URL       string `json:"url"`
@@ -28,7 +28,8 @@ var (
 	ytdlOut *bufio.Scanner
 )
 
-func ytdlInit() {
+// Init creates a connection to youtube-dl extension
+func Init() {
 	var err error
 
 	log.Info("[extractor] cheking for a new update for youtube-dl")
@@ -39,7 +40,7 @@ func ytdlInit() {
 		log.Fatal("[extractor]", curDir)
 	}
 
-	ytdlPath = filepath.Join(curDir, "extractor.pyz")
+	ytdlPath := filepath.Join(curDir, "extractor.pyz")
 
 	// check youtube-dl
 	if info, err := os.Stat(ytdlPath); err == nil {
@@ -111,12 +112,12 @@ func ytdlInit() {
 	ytdlOut = bufio.NewScanner(out)
 }
 
-func extract(url string) (*videoInfo, error) {
+func Extract(url string) (*VideoInfo, error) {
 	fmt.Fprintln(ytdlIn, url)
 	if !ytdlOut.Scan() {
 		return nil, errors.New("youtube-dl has stopped")
 	}
-	var info videoInfo
+	var info VideoInfo
 	json.Unmarshal(ytdlOut.Bytes(), &info)
 	return &info, nil
 }

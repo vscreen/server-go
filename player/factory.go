@@ -1,11 +1,15 @@
 package player
 
+import (
+	"github.com/vscreen/server-go/player/extractor"
+)
+
 // New creates a player interface
 func New(player string) (*Player, error) {
 	var b backendPlayer
 	var err error
 
-	ytdlInit()
+	extractor.Init()
 
 	switch player {
 	case MPV:

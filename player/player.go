@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/vscreen/server-go/player/extractor"
 )
 
 // backendPlayer is an abstraction of a video player. It contains
@@ -24,7 +25,7 @@ type backendPlayer interface {
 type Player struct {
 	State      *state
 	b          backendPlayer
-	playlist   []*videoInfo
+	playlist   []*extractor.VideoInfo
 	videoTimer *timer
 	m          *sync.Mutex
 }
@@ -33,7 +34,7 @@ func new(b backendPlayer) (*Player, error) {
 	return &Player{
 		State:      newState(),
 		b:          b,
-		playlist:   make([]*videoInfo, 0),
+		playlist:   make([]*extractor.VideoInfo, 0),
 		videoTimer: nil,
 		m:          &sync.Mutex{},
 	}, nil
@@ -154,7 +155,7 @@ func (p *Player) Add(url string) error {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	info, err := extract(url)
+	info, err := extractor.Extract(url)
 	if err != nil {
 		return err
 	}
