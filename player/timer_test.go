@@ -5,19 +5,19 @@ import (
 	"time"
 )
 
-// allows only 2 ms off
-const eps = 1000000 // 1000000ns = 1000μs = 1ms
+// allows only 5 ms off
+const eps = 5000000
 
 func TestPlay(t *testing.T) {
 	start := time.Now()
 	done := make(chan struct{})
 	expected := time.Second.Nanoseconds()
 
-	timer := newTimer(1, func() {
+	timer := newTimer(func() {
 		done <- struct{}{}
 	})
 
-	timer.play()
+	timer.new(1)
 	<-done
 
 	elapsed := time.Since(start).Nanoseconds()
@@ -31,10 +31,11 @@ func TestSeek(t *testing.T) {
 	done := make(chan struct{})
 	expected := (2 * time.Second).Nanoseconds()
 
-	timer := newTimer(511, func() {
+	timer := newTimer(func() {
 		done <- struct{}{}
 	})
 
+	timer.new(511)
 	timer.seek(float64(509) / 511)
 	timer.play()
 	<-done
@@ -50,11 +51,11 @@ func TestPause(t *testing.T) {
 	done := make(chan struct{})
 	expected := (time.Second * 3).Nanoseconds()
 
-	timer := newTimer(2, func() {
+	timer := newTimer(func() {
 		done <- struct{}{}
 	})
 
-	timer.play()
+	timer.new(2)
 	<-time.After(time.Second)
 	timer.pause()
 	<-time.After(time.Second)

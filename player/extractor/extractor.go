@@ -112,12 +112,12 @@ func Init() {
 	ytdlOut = bufio.NewScanner(out)
 }
 
-func Extract(url string) (*VideoInfo, error) {
+func Extract(url string) (VideoInfo, error) {
 	fmt.Fprintln(ytdlIn, url)
 	if !ytdlOut.Scan() {
-		return nil, errors.New("youtube-dl has stopped")
+		return VideoInfo{}, errors.New("youtube-dl has stopped")
 	}
 	var info VideoInfo
 	json.Unmarshal(ytdlOut.Bytes(), &info)
-	return &info, nil
+	return info, nil
 }

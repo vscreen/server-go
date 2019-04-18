@@ -14,18 +14,21 @@ type timer struct {
 	f         finishCallback
 }
 
-func newTimer(seconds int64, f finishCallback) *timer {
-	d := time.Second * time.Duration(seconds)
-
+func newTimer(f finishCallback) *timer {
 	t := timer{
-		t:       nil,
-		origDur: d,
-		curDur:  d,
-		f:       f,
+		t: nil,
+		f: f,
 	}
 
-	t.play()
 	return &t
+}
+
+func (t *timer) new(newSeconds int64) {
+	t.stop()
+	d := time.Second * time.Duration(newSeconds)
+	t.origDur = d
+	t.curDur = d
+	t.play()
 }
 
 // play does nothing if t is not nil. Else, play starts timer

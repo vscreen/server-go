@@ -31,7 +31,7 @@ func New(player *vplayer.Player) (*Server, error) {
 }
 
 func (s *Server) startNotifierService() error {
-	infoChannel, err := s.playerInstance.State.Subscribe()
+	infoChannel, err := s.playerInstance.Subscribe()
 	if err != nil {
 		log.Error("[server] failed to start notifier service")
 	}
