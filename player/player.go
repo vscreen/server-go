@@ -157,7 +157,7 @@ func (p *Player) Add(url string) error {
 
 		s.Playlist = append(s.Playlist, info)
 
-		if s.Playing {
+		if s.Playing || s.Title != "" {
 			return nil
 		}
 
