@@ -10,6 +10,7 @@ import (
 	vplayer "github.com/vscreen/server-go/player"
 	"github.com/vscreen/server-go/player/backend"
 	"github.com/vscreen/server-go/server"
+	"github.com/vscreen/server-go/supervisor"
 )
 
 func main() {
@@ -50,13 +51,14 @@ func main() {
 		if err != nil {
 			return err
 		}
-		defer p.Close()
 
 		s, err := server.New(p)
 		if err != nil {
 			return err
 		}
 
+		svr := supervisor.From("vscreen", p)
+		svr.ServeBackground()
 		return s.ListenAndServe(":8080")
 	}
 

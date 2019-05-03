@@ -6,6 +6,7 @@ import (
 
 	"github.com/vscreen/server-go/player/backend"
 	"github.com/vscreen/server-go/player/extractor"
+	svr "github.com/vscreen/server-go/supervisor"
 )
 
 type msg func(b backend.Player, i *State)
@@ -14,11 +15,14 @@ type action func(b backend.Player, i *State) error
 // Player is an abstraction of a video player.
 // the backend player is determined by the platform
 type Player struct {
-	mailbox        chan<- msg
+	mailbox        chan msg
 	subscribed     bool
-	subscriberChan <-chan State
+	subscriberChan chan State
+	backend        backend.Player
+	children       []svr.Service
 }
 
+// New creates Player abstraction
 func New(player string) (*Player, error) {
 	extractor.Init()
 	b, err := backend.New(player)
@@ -29,8 +33,12 @@ func New(player string) (*Player, error) {
 	buffSize := 64
 	mailbox := make(chan msg, buffSize)
 	subscriberChan := make(chan State)
-	p := Player{mailbox: mailbox, subscriberChan: subscriberChan}
-	go p.actorLoop(b, mailbox, subscriberChan)
+	p := Player{
+		mailbox:        mailbox,
+		subscriberChan: subscriberChan,
+		backend:        b,
+		children:       nil,
+	}
 	return &p, nil
 }
 
@@ -46,9 +54,23 @@ func (p *Player) Subscribe() (<-chan State, error) {
 	return p.subscriberChan, nil
 }
 
-func (p *Player) actorLoop(b backend.Player, mailbox <-chan msg, subscriberChan chan<- State) {
+// Name describes supervisor's name
+func (p *Player) Name() string {
+	return "player"
+}
+
+// Children lists all childrens to be supervised
+func (p *Player) Children() []svr.Service {
+	return p.children
+}
+
+// Serve start the server and satisfied VscreenService
+func (p *Player) Serve() {
 	var s State
 	s.timer = newTimer(p.onFinish)
+	var mailbox <-chan msg = p.mailbox
+	var subscriberChan chan<- State = p.subscriberChan
+	b := p.backend
 
 	for {
 		action := <-mailbox

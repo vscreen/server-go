@@ -12,3 +12,5 @@
 *.out
 
 vendor
+extractor.pyz
+server-go
